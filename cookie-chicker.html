@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Cookie Clicker Ultimate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body, html { margin: 0; padding: 0; overflow: hidden; font-family: 'Press Start 2P', cursive; }
+        #cookie-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .game-button {
+            background: linear-gradient(to bottom, #4a4a4a 0%, #000000 100%);
+            border: 3px solid #ffd700;
+            color: #ffd700;
+            text-shadow: 2px 2px #000;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .game-button:hover {
+            background: linear-gradient(to bottom, #ffd700 0%, #b8860b 100%);
+            color: #000;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="cookie-container"></div>
+    <div class="absolute top-0 left-0 w-full p-6">
+        <h1 class="text-4xl mb-4 text-yellow-400 drop-shadow-lg">Cosmic Cookie Clicker Ultimate</h1>
+        <div class="flex justify-between items-start">
+            <div class="space-y-2">
+                <p class="text-xl">Cookies: <span id="cookie-count" class="font-bold">0</span></p>
+                <p class="text-lg">Level: <span id="level" class="font-bold">1</span></p>
+                <p class="text-lg">CPS: <span id="cps" class="font-bold">0</span></p>
+            </div>
+            <div class="space-y-2">
+                <button id="upgrade-btn" class="game-button w-full mb-2">Upgrade Click (Cost: 10)</button>
+                <button id="auto-clicker-btn" class="game-button w-full mb-2">Buy Auto-Clicker (Cost: 50)</button>
+                <button id="cosmic-bakery-btn" class="game-button w-full mb-2">Build Cosmic Bakery (Cost: 1000)</button>
+                <button id="wormhole-btn" class="game-button w-full">Open Wormhole (Cost: 5000)</button>
+            </div>
+        </div>
+    </div>
+    <div id="achievements" class="absolute bottom-4 left-4 bg-black bg-opacity-50 p-4 rounded">
+        <h2 class="text-xl mb-2">Achievements</h2>
+        <ul id="achievement-list" class="list-disc pl-4"></ul>
+    </div>
+
+    <script>
+        let cookies = 0;
+        let level = 1;
+        let upgradeCost = 10;
+        let clickValue = 1;
+        let cps = 0;
+        let autoClickerCost = 50;
+        let autoClickers = 0;
+        let cosmicBakeryCost = 1000;
+        let cosmicBakeries = 0;
+        let wormholeCost = 5000;
+        let wormholes = 0;
+
+        const cookieCountElement = document.getElementById('cookie-count');
+        const levelElement = document.getElementById('level');
+        const cpsElement = document.getElementById('cps');
+        const upgradeButton = document.getElementById('upgrade-btn');
+        const autoClickerButton = document.getElementById('auto-clicker-btn');
+        const cosmicBakeryButton = document.getElementById('cosmic-bakery-btn');
+        const wormholeButton = document.getElementById('wormhole-btn');
+        const achievementList = document.getElementById('achievement-list');
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('cookie-container').appendChild(renderer.domElement);
+
+        // Create cookie
+        const cookieTexture = new THREE.TextureLoader().load('https://i.imgur.com/Zy3EjLh.png');
+        const geometry = new THREE.CircleGeometry(1, 32);
+        const material = new THREE.MeshBasicMaterial({ map: cookieTexture });
+        const cookie = new THREE.Mesh(geometry, material);
+        scene.add(cookie);
+
+        camera.position.z = 5;
+
+        // Particle system
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 1000;
+        const posArray = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 10;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.01,
+            color: 0xFFFFFF
+        });
+
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            cookie.rotation.z += 0.005;
+            particleSystem.rotation.y += 0.0005;
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        renderer.domElement.addEventListener('click', () => {
+            addCookies(clickValue);
+            spawnParticles();
+            gsap.to(cookie.scale, { x: 1.2, y: 1.2, duration: 0.1, yoyo: true, repeat: 1 });
+        });
+
+        upgradeButton.addEventListener('click', () => {
+            if (cookies >= upgradeCost) {
+                cookies -= upgradeCost;
+                level++;
+                clickValue++;
+                upgradeCost = Math.floor(upgradeCost * 1.5);
+                updateUI();
+                gsap.from(upgradeButton, { scale: 1.2, duration: 0.3, ease: 'back.out' });
+            }
+        });
+
+        autoClickerButton.addEventListener('click', () => {
+            if (cookies >= autoClickerCost) {
+                cookies -= autoClickerCost;
+                autoClickers++;
+                cps += 1;
+                autoClickerCost = Math.floor(autoClickerCost * 1.5);
+                updateUI();
+                gsap.from(autoClickerButton, { scale: 1.2, duration: 0.3, ease: 'back.out' });
+            }
+        });
+
+        cosmicBakeryButton.addEventListener('click', () => {
+            if (cookies >= cosmicBakeryCost) {
+                cookies -= cosmicBakeryCost;
+                cosmicBakeries++;
+                cps += 5;
+cosmicBakeryCost = Math.floor(cosmicBakeryCost * 1.8);
+                updateUI();
+                gsap.from(cosmicBakeryButton, { scale: 1.2, duration: 0.3, ease: 'back.out' });
+            }
+        });
+
+        wormholeButton.addEventListener('click', () => {
+            if (cookies >= wormholeCost) {
+                cookies -= wormholeCost;
+                wormholes++;
+                cps += 20;
+                wormholeCost = Math.floor(wormholeCost * 2);
+                updateUI();
+                gsap.from(wormholeButton, { scale: 1.2, duration: 0.3, ease: 'back.out' });
+            }
+        });
+
+        function spawnParticles() {
+            const particleCount = 20;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 0.2;
+                positions[i * 3] = Math.cos(angle) * radius;
+                positions[i * 3 + 1] = Math.sin(angle) * radius;
+                positions[i * 3 + 2] = 0;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: 0xFFD700, size: 0.05 });
+            const particles = new THREE.Points(geometry, material);
+
+            particles.position.copy(cookie.position);
+            scene.add(particles);
+
+            gsap.to(particles.position, {
+                x: '+=' + (Math.random() - 0.5) * 2,
+                y: '+=' + (Math.random() - 0.5) * 2,
+                z: '+=' + (Math.random() - 0.5) * 2,
+                duration: 1,
+                ease: 'power2.out',
+                onComplete: () => {
+                    scene.remove(particles);
+                }
+            });
+        }
+
+        function addCookies(amount) {
+            cookies += amount;
+            updateUI();
+        }
+
+        function updateUI() {
+            cookieCountElement.textContent = Math.floor(cookies);
+            levelElement.textContent = level;
+            cpsElement.textContent = cps;
+            upgradeButton.textContent = `Upgrade Click (Cost: ${upgradeCost})`;
+            autoClickerButton.textContent = `Buy Auto-Clicker (Cost: ${autoClickerCost})`;
+            cosmicBakeryButton.textContent = `Build Cosmic Bakery (Cost: ${cosmicBakeryCost})`;
+            wormholeButton.textContent = `Open Wormhole (Cost: ${wormholeCost})`;
+        }
+
+        function autoClick() {
+            addCookies(cps);
+            if (cps > 0) {
+                spawnParticles();
+            }
+        }
+
+        setInterval(autoClick, 1000);
+
+        // Add visual improvements
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({
+            color: 0xFFFFFF,
+            size: 0.02,
+        });
+
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = -Math.random() * 2000;
+            starVertices.push(x, y, z);
+        }
+
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Add achievements
+        const achievements = [
+            { name: "Cookie Novice", requirement: 100, achieved: false },
+            { name: "Cookie Enthusiast", requirement: 1000, achieved: false },
+            { name: "Cookie Master", requirement: 10000, achieved: false },
+            { name: "Cosmic Baker", requirement: 100000, achieved: false },
+            { name: "Galactic Confectioner", requirement: 1000000, achieved: false },
+        ];
+
+        function checkAchievements() {
+            achievements.forEach(achievement => {
+                if (!achievement.achieved && cookies >= achievement.requirement) {
+                    achievement.achieved = true;
+                    showAchievement(achievement.name);
+                    updateAchievementList();
+                }
+            });
+        }
+
+        function showAchievement(name) {
+            const achievementElement = document.createElement('div');
+            achievementElement.textContent = `Achievement Unlocked: ${name}`;
+            achievementElement.className = 'fixed bottom-4 right-4 bg-yellow-400 text-black py-2 px-4 rounded-full font-bold';
+            document.body.appendChild(achievementElement);
+            gsap.from(achievementElement, { y: 50, opacity: 0, duration: 0.5 });
+            gsap.to(achievementElement, { y: -50, opacity: 0, delay: 3, duration: 0.5, onComplete: () => achievementElement.remove() });
+        }
+
+        function updateAchievementList() {
+            achievementList.innerHTML = '';
+            achievements.forEach(achievement => {
+                if (achievement.achieved) {
+                    const li = document.createElement('li');
+                    li.textContent = achievement.name;
+                    achievementList.appendChild(li);
+                }
+            });
+        }
+
+        // Game loop
+        function gameLoop() {
+            updateUI();
+            checkAchievements();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Save and load game
+        function saveGame() {
+            const gameState = {
+                cookies, level, upgradeCost, clickValue, cps, autoClickers, autoClickerCost,
+                cosmicBakeries, cosmicBakeryCost, wormholes, wormholeCost, achievements
+            };
+            localStorage.setItem('cosmicCookieClickerSave', JSON.stringify(gameState));
+        }
+
+        function loadGame() {
+            const savedState = localStorage.getItem('cosmicCookieClickerSave');
+            if (savedState) {
+                const gameState = JSON.parse(savedState);
+                cookies = gameState.cookies;
+                level = gameState.level;
+                upgradeCost = gameState.upgradeCost;
+                clickValue = gameState.clickValue;
+                cps = gameState.cps;
+                autoClickers = gameState.autoClickers;
+                autoClickerCost = gameState.autoClickerCost;
+                cosmicBakeries = gameState.cosmicBakeries;
+                cosmicBakeryCost = gameState.cosmicBakeryCost;
+                wormholes = gameState.wormholes;
+                wormholeCost = gameState.wormholeCost;
+                achievements = gameState.achievements;
+                updateUI();
+                updateAchievementList();
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveGame, 30000);
+
+        // Load game on start
+        loadGame();
+    </script>
+</body>
+</html>
